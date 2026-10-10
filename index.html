@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Een vraagje…</title>
+<style>
+  :root {
+    --bg: #fff5f7;
+    --card: #ffffff;
+    --text: #4a2c3a;
+    --muted: #9b7486;
+    --ja: #ff4f81;
+    --ja-hover: #e8386b;
+    --nee: #e9dde3;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 16px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 24px;
+    padding: 32px 24px;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(255, 79, 129, .15);
+  }
+  .emoji { font-size: 64px; line-height: 1; margin-bottom: 12px; transition: transform .3s; }
+  h1 { font-size: 1.6rem; margin: 0 0 8px; }
+  p { color: var(--muted); margin: 0 0 24px; min-height: 1.4em; }
+  .buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    min-height: 60px;
+  }
+  button {
+    font: inherit;
+    font-weight: 600;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 28px;
+    cursor: pointer;
+    transition: transform .2s, background .2s;
+  }
+  #ja { background: var(--ja); color: #fff; }
+  #ja:hover { background: var(--ja-hover); }
+  #nee {
+    background: var(--nee);
+    color: var(--text);
+    transition: left .25s ease, top .25s ease, transform .2s, opacity .2s;
+  }
+  #nee.vlucht { position: fixed; z-index: 10; }
+  .hidden { display: none; }
+  .heart {
+    position: fixed;
+    top: -40px;
+    pointer-events: none;
+    animation: val linear forwards;
+  }
+  @keyframes val {
+    to { transform: translateY(110vh) rotate(360deg); opacity: .6; }
+  }
+</style>
+</head>
+<body>
+  <div class="card" id="vraag">
+    <div class="emoji" id="emoji">🥺</div>
+    <h1 id="titel">Wil je met me op date?</h1>
+    <p id="tekst">&nbsp;</p>
+    <div class="buttons">
+      <button id="ja">Ja!</button>
+      <button id="nee">Nee</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="blij">
+    <div class="emoji">🥰</div>
+    <h1>Jaaaa! Ik wist het!</h1>
+    <p id="eind">Het wordt een date 💕</p>
+  </div>
+
+<script>
+  // Optioneel: zet een naam in de link, bijv. index.html?naam=Sanne
+  const naam = new URLSearchParams(location.search).get('naam');
+  if (naam) document.getElementById('titel').textContent = naam + ', wil je met me op date?';
+
+  const ja = document.getElementById('ja');
+  const nee = document.getElementById('nee');
+  const tekst = document.getElementById('tekst');
+  const emoji = document.getElementById('emoji');
+
+  const plagen = [
+    ['Oeps, gemist 😏', '😏'],
+    ['Probeer het nog eens…', '🙃'],
+    ['Weet je het zeker?', '🥺'],
+    ['Echt heel zeker?', '😢'],
+    ['Die knop is een beetje verlegen', '🙈'],
+    ['Je vingers willen eigenlijk “ja” zeggen', '😌'],
+    ['Ik geef niet op hoor!', '😤'],
+    ['Kijk eens hoe groot “Ja” al is 👀', '😇'],
+    ['Oké, nu wordt het zielig…', '😭'],
+    ['Gewoon op Ja drukken, kom op 💕', '🥹'],
+  ];
+  let pogingen = 0;
+
+  function vlucht(e) {
+    if (e) e.preventDefault();
+    const [msg, emo] = plagen[Math.min(pogingen, plagen.length - 1)];
+    tekst.textContent = msg;
+    emoji.textContent = emo;
+    pogingen++;
+
+    // Ja wordt steeds groter, Nee steeds kleiner
+    ja.style.transform = 'scale(' + Math.min(1 + pogingen * 0.15, 2.5) + ')';
+    const krimp = Math.max(1 - pogingen * 0.06, 0.5);
+
+    // Verplaats Nee naar een willekeurige plek op het scherm
+    const r = nee.getBoundingClientRect();
+    if (!nee.classList.contains('vlucht')) {
+      nee.style.left = r.left + 'px';
+      nee.style.top = r.top + 'px';
+      nee.classList.add('vlucht');
+      nee.offsetWidth; // forceer reflow zodat de eerste sprong ook animeert
+    }
+    const marge = 16;
+    const maxX = innerWidth - r.width - marge;
+    const maxY = innerHeight - r.height - marge;
+    let x, y, tries = 0;
+    do {
+      x = marge + Math.random() * (maxX - marge);
+      y = marge + Math.random() * (maxY - marge);
+      tries++;
+    } while (tries < 20 && Math.hypot(x - r.left, y - r.top) < 120);
+    nee.style.left = x + 'px';
+    nee.style.top = y + 'px';
+    nee.style.transform = 'scale(' + krimp + ')';
+  }
+
+  // Muis: vlucht al als je er in de buurt komt. Touch: vlucht bij aanraken.
+  nee.addEventListener('mouseenter', vlucht);
+  nee.addEventListener('touchstart', vlucht, { passive: false });
+  nee.addEventListener('click', vlucht); // voor als het toch lukt (bijv. via toetsenbord)
+
+  ja.addEventListener('click', () => {
+    document.getElementById('vraag').classList.add('hidden');
+    nee.classList.add('hidden');
+    document.getElementById('blij').classList.remove('hidden');
+    if (pogingen > 0) {
+      document.getElementById('eind').textContent =
+        'Na ' + pogingen + ' keer proberen op Nee te klikken… het wordt een date 💕';
+    }
+    hartjes();
+  });
+
+  function hartjes() {
+    const tekens = ['💖', '💕', '💗', '❤️', '💘'];
+    for (let i = 0; i < 40; i++) {
+      setTimeout(() => {
+        const h = document.createElement('div');
+        h.className = 'heart';
+        h.textContent = tekens[Math.floor(Math.random() * tekens.length)];
+        h.style.left = Math.random() * 100 + 'vw';
+        h.style.fontSize = 18 + Math.random() * 24 + 'px';
+        h.style.animationDuration = 3 + Math.random() * 3 + 's';
+        document.body.appendChild(h);
+        setTimeout(() => h.remove(), 6500);
+      }, i * 120);
+    }
+  }
+</script>
+</body>
+</html>
