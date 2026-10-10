@@ -113,12 +113,39 @@
     ['Kijk eens hoe groot “Ja” al is 👀', '😇'],
     ['Oké, nu wordt het zielig…', '😭'],
     ['Gewoon op Ja drukken, kom op 💕', '🥹'],
+    ['Ik heb al een restaurant uitgezocht…', '🍝'],
+    ['Er is ook ijs na afloop 🍦', '🤤'],
+    ['Mijn moeder vindt je ook leuk', '👵'],
+    ['Die Nee-knop is stuk, sorry 🛠️', '🤷'],
+    ['Nee is geen geldig antwoord', '🙅'],
+    ['Ik betaal! 💸', '🤑'],
+    ['Ik heb er zelfs voor gedoucht', '🧼'],
+    ['Je weet dat je het wilt 😌', '😏'],
+    ['Mijn hart breekt een beetje 💔', '🥲'],
+    ['Wat als ik heel lief kijk?', '🥺'],
+    ['Ik blijf het gewoon vragen hoor', '🔁'],
+    ['Zelfs de knop wil dat je ja zegt', '🫣'],
+    ['Pfff, koppig hè', '😤'],
+    ['Oké oké, ik neem een bos bloemen mee 💐', '🌹'],
+    ['Last chance… (niet echt, ik blijf vragen)', '⏳'],
+    ['Je mist nu wel een hele leuke avond', '🌙'],
+    ['Ik ga zo huilen in een hoekje', '😭'],
+    ['Ja-knop: “kies mij, kies mij!”', '🙋'],
+    ['Error 404: Nee niet gevonden', '🤖'],
+    ['Kom op, één dateje maar', '☝️'],
   ];
   let pogingen = 0;
+  let vorige = -1;
 
   function vlucht(e) {
     if (e) e.preventDefault();
-    const [msg, emo] = plagen[Math.min(pogingen, plagen.length - 1)];
+    // Eerst alles op volgorde, daarna willekeurig (maar nooit twee keer hetzelfde achter elkaar)
+    let i = pogingen;
+    if (i >= plagen.length) {
+      do { i = Math.floor(Math.random() * plagen.length); } while (i === vorige);
+    }
+    vorige = i;
+    const [msg, emo] = plagen[i];
     tekst.textContent = msg;
     emoji.textContent = emo;
     pogingen++;
