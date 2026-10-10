@@ -1,2 +1,8 @@
-FROM nginx:1.27-alpine
-COPY index.html /usr/share/nginx/html/index.html
+FROM node:22-alpine
+WORKDIR /app
+COPY server.js ./
+COPY public ./public
+ENV NODE_ENV=production PORT=3000
+USER node
+EXPOSE 3000
+CMD ["node", "server.js"]

@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Een vraagje…</title>
+<style>
+  :root {
+    --bg: #fff5f7;
+    --card: #ffffff;
+    --text: #4a2c3a;
+    --muted: #9b7486;
+    --ja: #ff4f81;
+    --ja-hover: #e8386b;
+    --nee: #e9dde3;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    padding: 16px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 24px;
+    padding: 32px 24px;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(255, 79, 129, .15);
+  }
+  .sticker {
+    font-size: 64px;
+    line-height: 1;
+    height: 120px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .sticker img { max-height: 120px; max-width: 100%; border-radius: 16px; }
+  .schud { animation: schud .45s; }
+  .dans { animation: dans .9s ease-in-out infinite; }
+  @keyframes schud {
+    0%, 100% { transform: translateX(0) rotate(0); }
+    20% { transform: translateX(-10px) rotate(-8deg); }
+    40% { transform: translateX(10px) rotate(8deg); }
+    60% { transform: translateX(-6px) rotate(-4deg); }
+    80% { transform: translateX(6px) rotate(4deg); }
+  }
+  @keyframes dans {
+    0%, 100% { transform: translateY(0) rotate(-10deg) scale(1); }
+    50% { transform: translateY(-14px) rotate(10deg) scale(1.1); }
+  }
+  h1 { font-size: 1.6rem; margin: 0 0 8px; }
+  p { color: var(--muted); margin: 0 0 24px; min-height: 1.4em; }
+  .buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+    min-height: 60px;
+  }
+  button {
+    font: inherit;
+    font-weight: 600;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 28px;
+    cursor: pointer;
+    transition: transform .2s, background .2s;
+  }
+  #ja { background: var(--ja); color: #fff; }
+  #ja:hover { background: var(--ja-hover); }
+  #nee {
+    background: var(--nee);
+    color: var(--text);
+    transition: left .25s ease, top .25s ease, transform .2s, opacity .2s;
+  }
+  #nee.vlucht { position: fixed; z-index: 10; }
+  #nee.overstag { background: var(--ja); color: #fff; }
+  h2 { font-size: 1.1rem; margin: 0 0 12px; }
+  .keuzes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .keuze {
+    background: var(--bg);
+    color: var(--text);
+    border: 2px solid transparent;
+    border-radius: 16px;
+    padding: 14px 8px;
+    font-weight: 600;
+  }
+  .keuze:hover { border-color: var(--nee); }
+  .keuze.gekozen { border-color: var(--ja); background: #ffe3ec; }
+  .keuze span { display: block; font-size: 28px; margin-bottom: 4px; }
+  label { display: block; text-align: left; font-weight: 600; margin: 14px 0 6px; }
+  input, textarea {
+    font: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--nee);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--text);
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--ja); }
+  textarea { resize: vertical; min-height: 70px; }
+  .verstuur { background: var(--ja); color: #fff; width: 100%; margin-top: 20px; }
+  .verstuur:disabled { opacity: .5; cursor: default; }
+  .fout { color: #c0392b; margin: 12px 0 0; }
+  .hidden { display: none; }
+  .heart {
+    position: fixed;
+    top: -40px;
+    pointer-events: none;
+    animation: val linear forwards;
+  }
+  @keyframes val {
+    to { transform: translateY(110vh) rotate(360deg); opacity: .6; }
+  }
+</style>
+</head>
+<body>
+  <div class="card" id="vraag">
+    <div class="sticker" id="sticker">🥺</div>
+    <h1 id="titel">Wil je met me op date?</h1>
+    <p id="tekst">&nbsp;</p>
+    <div class="buttons">
+      <button id="ja">Ja!</button>
+      <button id="nee">Nee</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="blij">
+    <div class="sticker dans" id="blijSticker">🥰</div>
+    <h1>Jaaaa! Ik wist het!</h1>
+    <p id="eind">Het wordt een date 💕</p>
+    <h2>Wat gaan we doen?</h2>
+    <div class="keuzes" id="keuzes"></div>
+    <div class="hidden" id="wanneer">
+      <label for="datum">Welke dag?</label>
+      <input type="date" id="datum">
+      <label for="tijd">Hoe laat?</label>
+      <input type="time" id="tijd" value="19:00">
+      <label for="bericht">Nog iets kwijt? (mag ook leeg)</label>
+      <textarea id="bericht" maxlength="300" placeholder="Bijv. ik wil wel een toetje 🍰"></textarea>
+      <button class="verstuur" id="verstuur">Plan versturen 💌</button>
+      <p class="fout hidden" id="fout"></p>
+    </div>
+  </div>
+
+  <div class="card hidden" id="klaar">
+    <div class="sticker dans">💌</div>
+    <h1>Genoteerd!</h1>
+    <p id="samenvatting"></p>
+    <p>Ik kijk er nu al naar uit 💕</p>
+  </div>
+
+<script>
+  // Optioneel: zet een naam in de link, bijv. /?naam=Sanne
+  const naam = new URLSearchParams(location.search).get('naam') || '';
+  if (naam) document.getElementById('titel').textContent = naam + ', wil je met me op date?';
+
+  // Eigen gifjes? Zet ze in de map gifs/ en vul hier de bestandsnamen in, bijv.
+  //   nee: ['gifs/verdrietig1.gif', 'gifs/verdrietig2.gif'],  ja: 'gifs/dansen.gif'
+  // Bij elke Nee-klik komt de volgende uit de lijst. Leeg = de geanimeerde emoji's.
+  const GIFS = {
+    nee: [],
+    ja: '',
+  };
+
+  const ACTIVITEITEN = [
+    ['eten', '🍕', 'Uit eten'],
+    ['film', '🎬', 'Film kijken'],
+    ['ijs', '🍦', 'Ijsje halen'],
+    ['bowlen', '🎳', 'Bowlen'],
+    ['wandelen', '🌳', 'Wandelen'],
+    ['verrassing', '🎁', 'Verras me!'],
+  ];
+
+  const ja = document.getElementById('ja');
+  const nee = document.getElementById('nee');
+  const tekst = document.getElementById('tekst');
+  const sticker = document.getElementById('sticker');
+
+  const plagen = [
+    ['Oeps, gemist 😏', '😏'],
+    ['Probeer het nog eens…', '🙃'],
+    ['Weet je het zeker?', '🥺'],
+    ['Echt heel zeker?', '😢'],
+    ['Die knop is een beetje verlegen', '🙈'],
+    ['Je vingers willen eigenlijk “ja” zeggen', '😌'],
+    ['Ik geef niet op hoor!', '😤'],
+    ['Kijk eens hoe groot “Ja” al is 👀', '😇'],
+    ['Oké, nu wordt het zielig…', '😭'],
+    ['Gewoon op Ja drukken, kom op 💕', '🥹'],
+    ['Ik heb al een playlist voor ons gemaakt 🎶', '🎧'],
+    ['Er is ook ijs na afloop 🍦', '🤤'],
+    ['Mijn moeder vindt je ook leuk', '👵'],
+    ['Die Nee-knop is stuk, sorry 🛠️', '🤷'],
+    ['Nee is geen geldig antwoord', '🙅'],
+    ['Ik betaal! 💸', '🤑'],
+    ['Ik heb mijn mooiste outfit al klaargelegd', '👔'],
+    ['Je weet dat je het wilt 😌', '😏'],
+    ['Deze knop is echt te snel voor je', '🏃'],
+    ['Wat als ik heel lief kijk?', '🥺'],
+    ['Ik blijf het gewoon vragen hoor', '🔁'],
+    ['Zelfs de knop wil dat je ja zegt', '🫣'],
+    ['Pfff, koppig hè', '😤'],
+    ['Oké oké, ik neem een bos bloemen mee 💐', '🌹'],
+    ['Last chance… (niet echt, ik blijf vragen)', '⏳'],
+    ['Je mist nu wel een hele leuke avond', '🌙'],
+    ['Ik ga zo huilen in een hoekje', '😭'],
+    ['Ja-knop: “kies mij, kies mij!”', '🙋'],
+    ['Error 404: Nee niet gevonden', '🤖'],
+    ['Kom op, één dateje maar', '☝️'],
+  ];
+
+  // De tekst op de Nee-knop zelf gaat langzaam overstag
+  const neeLabels = [
+    [0, 'Nee'],
+    [3, 'Echt nee?'],
+    [6, 'Misschien…'],
+    [9, 'Hmm, oké…'],
+    [12, 'Oké, ja 💕'],
+  ];
+  const overstagNa = 12;
+
+  let pogingen = 0;
+  let vorige = -1;
+
+  function toonSticker(el, emo, gif) {
+    if (gif) {
+      el.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = gif;
+      img.alt = '';
+      el.appendChild(img);
+    } else {
+      el.textContent = emo;
+    }
+  }
+
+  function vlucht(e) {
+    if (e) e.preventDefault();
+    // Is de knop al overstag? Dan telt hij gewoon als Ja
+    if (pogingen >= overstagNa) return zegJa();
+
+    // Eerst alles op volgorde, daarna willekeurig (maar nooit twee keer hetzelfde achter elkaar)
+    let i = pogingen;
+    if (i >= plagen.length) {
+      do { i = Math.floor(Math.random() * plagen.length); } while (i === vorige);
+    }
+    vorige = i;
+    const [msg, emo] = plagen[i];
+    tekst.textContent = msg;
+    const gif = GIFS.nee.length ? GIFS.nee[pogingen % GIFS.nee.length] : '';
+    toonSticker(sticker, emo, gif);
+    sticker.classList.remove('schud');
+    sticker.offsetWidth; // herstart de animatie
+    sticker.classList.add('schud');
+    pogingen++;
+
+    for (const [vanaf, label] of neeLabels) if (pogingen >= vanaf) nee.textContent = label;
+    nee.classList.toggle('overstag', pogingen >= overstagNa);
+
+    // Ja wordt steeds groter, Nee steeds kleiner
+    ja.style.transform = 'scale(' + Math.min(1 + pogingen * 0.15, 2.5) + ')';
+    const krimp = pogingen >= overstagNa ? 1 : Math.max(1 - pogingen * 0.06, 0.5);
+
+    // Verplaats Nee naar een willekeurige plek op het scherm
+    const r = nee.getBoundingClientRect();
+    if (!nee.classList.contains('vlucht')) {
+      nee.style.left = r.left + 'px';
+      nee.style.top = r.top + 'px';
+      nee.classList.add('vlucht');
+      nee.offsetWidth; // forceer reflow zodat de eerste sprong ook animeert
+    }
+    const marge = 16;
+    const maxX = innerWidth - r.width - marge;
+    const maxY = innerHeight - r.height - marge;
+    let x, y, tries = 0;
+    do {
+      x = marge + Math.random() * (maxX - marge);
+      y = marge + Math.random() * (maxY - marge);
+      tries++;
+    } while (tries < 20 && Math.hypot(x - r.left, y - r.top) < 120);
+    nee.style.left = x + 'px';
+    nee.style.top = y + 'px';
+    nee.style.transform = 'scale(' + krimp + ')';
+  }
+
+  // Nee springt pas weg als je erop klikt (of tikt)
+  nee.addEventListener('click', vlucht);
+  ja.addEventListener('click', zegJa);
+
+  function melding(data) {
+    return fetch('api/melding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ naam, pogingen, ...data }),
+    }).then(r => { if (!r.ok) throw new Error(r.status); });
+  }
+
+  function zegJa() {
+    document.getElementById('vraag').classList.add('hidden');
+    nee.classList.add('hidden');
+    document.getElementById('blij').classList.remove('hidden');
+    toonSticker(document.getElementById('blijSticker'), '🥰', GIFS.ja);
+    if (pogingen > 0) {
+      document.getElementById('eind').textContent =
+        'Na ' + pogingen + ' keer proberen op Nee te klikken… het wordt een date 💕';
+    }
+    hartjes();
+    melding({ type: 'ja' }).catch(() => {});
+  }
+
+  // Stap 2: activiteit kiezen
+  let gekozen = null;
+  const keuzes = document.getElementById('keuzes');
+  for (const [id, emo, label] of ACTIVITEITEN) {
+    const b = document.createElement('button');
+    b.className = 'keuze';
+    b.innerHTML = '<span>' + emo + '</span>' + label;
+    b.addEventListener('click', () => {
+      gekozen = id;
+      for (const k of keuzes.children) k.classList.toggle('gekozen', k === b);
+      document.getElementById('wanneer').classList.remove('hidden');
+    });
+    keuzes.appendChild(b);
+  }
+
+  // Stap 3: dag en tijd, standaard aanstaande zaterdag
+  const datum = document.getElementById('datum');
+  const lokaal = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const vandaag = new Date();
+  const zaterdag = new Date(vandaag);
+  zaterdag.setDate(vandaag.getDate() + ((6 - vandaag.getDay() + 7) % 7 || 7));
+  datum.min = lokaal(vandaag);
+  datum.value = lokaal(zaterdag);
+
+  document.getElementById('verstuur').addEventListener('click', async () => {
+    const knop = document.getElementById('verstuur');
+    const fout = document.getElementById('fout');
+    const tijd = document.getElementById('tijd').value;
+    const bericht = document.getElementById('bericht').value.trim();
+    if (!datum.value || !tijd) {
+      fout.textContent = 'Kies nog even een dag en tijd 🙂';
+      fout.classList.remove('hidden');
+      return;
+    }
+    knop.disabled = true;
+    knop.textContent = 'Versturen…';
+    fout.classList.add('hidden');
+
+    const [, emo, label] = ACTIVITEITEN.find(a => a[0] === gekozen);
+    const dag = new Date(datum.value + 'T12:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    const samenvatting = emo + ' ' + label + ' op ' + dag + ' om ' + tijd;
+
+    try {
+      await melding({ type: 'plan', activiteit: gekozen, datum: datum.value, tijd, bericht });
+      document.getElementById('blij').classList.add('hidden');
+      document.getElementById('klaar').classList.remove('hidden');
+      document.getElementById('samenvatting').textContent = samenvatting;
+      hartjes();
+    } catch {
+      knop.disabled = false;
+      knop.textContent = 'Plan versturen 💌';
+      fout.textContent = 'Oeps, versturen lukte niet. Probeer het nog eens, of stuur me een screenshot: ' + samenvatting;
+      fout.classList.remove('hidden');
+    }
+  });
+
+  function hartjes() {
+    const tekens = ['💖', '💕', '💗', '❤️', '💘'];
+    for (let i = 0; i < 40; i++) {
+      setTimeout(() => {
+        const h = document.createElement('div');
+        h.className = 'heart';
+        h.textContent = tekens[Math.floor(Math.random() * tekens.length)];
+        h.style.left = Math.random() * 100 + 'vw';
+        h.style.fontSize = 18 + Math.random() * 24 + 'px';
+        h.style.animationDuration = 3 + Math.random() * 3 + 's';
+        document.body.appendChild(h);
+        setTimeout(() => h.remove(), 6500);
+      }, i * 120);
+    }
+  }
+</script>
+</body>
+</html>

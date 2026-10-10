@@ -4,4 +4,10 @@ services:
     container_name: date-vraag
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "8080:3000"
+    environment:
+      # Zet je Discord-webhook in een .env-bestand naast dit bestand (zie .env.example)
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+    # Optioneel: eigen gifjes vanaf de server gebruiken (zie GIFS in public/index.html)
+    # volumes:
+    #   - ./gifs:/app/public/gifs:ro
