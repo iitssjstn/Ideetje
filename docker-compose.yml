@@ -1,0 +1,7 @@
+services:
+  date-vraag:
+    image: ghcr.io/iitssjstn/ideetje:latest
+    container_name: date-vraag
+    restart: unless-stopped
+    ports:
+      - "8080:80"
