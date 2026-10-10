@@ -149,10 +149,8 @@
     nee.style.transform = 'scale(' + krimp + ')';
   }
 
-  // Muis: vlucht al als je er in de buurt komt. Touch: vlucht bij aanraken.
-  nee.addEventListener('mouseenter', vlucht);
-  nee.addEventListener('touchstart', vlucht, { passive: false });
-  nee.addEventListener('click', vlucht); // voor als het toch lukt (bijv. via toetsenbord)
+  // Nee springt pas weg als je erop klikt (of tikt)
+  nee.addEventListener('click', vlucht);
 
   ja.addEventListener('click', () => {
     document.getElementById('vraag').classList.add('hidden');
