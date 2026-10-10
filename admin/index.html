@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Adminpaneel</title>
+<style>
+  :root {
+    --bg: #fff5f7;
+    --card: #ffffff;
+    --text: #4a2c3a;
+    --muted: #9b7486;
+    --ja: #ff4f81;
+    --ja-hover: #e8386b;
+    --rand: #e9dde3;
+    --goed: #1e8e5a;
+    --fout: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 24px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: 0 10px 40px rgba(255, 79, 129, .15);
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  h2 { font-size: 1rem; margin: 24px 0 8px; }
+  p { color: var(--muted); margin: 0 0 12px; }
+  label { display: block; font-weight: 600; margin: 12px 0 6px; }
+  input {
+    font: inherit;
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--rand);
+    border-radius: 12px;
+    color: var(--text);
+    background: #fff;
+  }
+  input:focus { outline: none; border-color: var(--ja); }
+  .rij { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 20px;
+    cursor: pointer;
+    background: var(--ja);
+    color: #fff;
+  }
+  button:hover { background: var(--ja-hover); }
+  button.licht { background: var(--rand); color: var(--text); }
+  button:disabled { opacity: .5; cursor: default; }
+  .status {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: .95rem;
+    word-break: break-all;
+  }
+  .melding { margin: 12px 0 0; min-height: 1.2em; }
+  .melding.goed { color: var(--goed); }
+  .melding.fout { color: var(--fout); }
+  .waarschuwing { color: var(--fout); }
+  .hidden { display: none; }
+  .kop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  a { color: var(--ja); }
+</style>
+</head>
+<body>
+  <div class="card hidden" id="login">
+    <h1>🔐 Adminpaneel</h1>
+    <p>Het wachtwoord staat in de logs van de container: <code>docker logs date-vraag</code></p>
+    <form id="loginForm">
+      <label for="wachtwoord">Wachtwoord</label>
+      <input type="password" id="wachtwoord" autocomplete="current-password" required>
+      <div class="rij"><button>Inloggen</button></div>
+    </form>
+    <p class="melding" id="loginMelding"></p>
+  </div>
+
+  <div class="card hidden" id="paneel">
+    <div class="kop">
+      <h1>💌 Adminpaneel</h1>
+      <button class="licht" id="uitloggen">Uitloggen</button>
+    </div>
+
+    <h2>Discord-webhook</h2>
+    <div class="status" id="webhookStatus"></div>
+    <p class="waarschuwing hidden" id="nietSchrijfbaar">
+      Let op: instellingen kunnen niet bewaard worden en verdwijnen bij een herstart.
+      Voeg het volume <code>date-vraag-data:/app/data</code> toe aan je docker-compose.
+    </p>
+    <form id="webhookForm">
+      <label for="url">Nieuwe webhook-URL</label>
+      <input type="url" id="url" placeholder="https://discord.com/api/webhooks/…" autocomplete="off">
+      <div class="rij">
+        <button>Opslaan</button>
+        <button type="button" class="licht" id="test">Testmelding sturen</button>
+        <button type="button" class="licht" id="wis">Verwijderen</button>
+      </div>
+    </form>
+    <p class="melding" id="webhookMelding"></p>
+
+    <div id="wachtwoordBlok">
+      <h2>Wachtwoord wijzigen</h2>
+      <form id="wachtwoordForm">
+        <label for="nieuw">Nieuw wachtwoord (minstens 8 tekens)</label>
+        <input type="password" id="nieuw" minlength="8" autocomplete="new-password" required>
+        <div class="rij"><button>Wijzigen</button></div>
+      </form>
+      <p class="melding" id="wachtwoordMelding"></p>
+    </div>
+
+    <p style="margin-top:24px"><a href="/">← Naar de website</a></p>
+  </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  async function api(actie, data) {
+    const opties = data === undefined
+      ? {}
+      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) };
+    const res = await fetch('/api/admin/' + actie, opties);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.fout || 'Er ging iets mis (' + res.status + ')');
+    return body;
+  }
+
+  function meld(id, tekst, goed) {
+    const el = $(id);
+    el.textContent = tekst;
+    el.className = 'melding ' + (goed ? 'goed' : 'fout');
+  }
+
+  function toon(st) {
+    $('login').classList.toggle('hidden', st.ingelogd);
+    $('paneel').classList.toggle('hidden', !st.ingelogd);
+    if (!st.ingelogd) return $('wachtwoord').focus();
+
+    const bronTekst = { paneel: 'ingesteld via dit paneel', env: 'uit DISCORD_WEBHOOK_URL (een webhook hier opslaan gaat voor)' };
+    $('webhookStatus').textContent = st.webhook
+      ? '✅ Actief: ' + st.webhook + ' (' + bronTekst[st.bron] + ')'
+      : '❌ Nog geen webhook ingesteld: je krijgt nu geen meldingen';
+    $('wis').classList.toggle('hidden', st.bron !== 'paneel');
+    $('test').disabled = !st.webhook;
+    $('nietSchrijfbaar').classList.toggle('hidden', st.schrijfbaar);
+    $('wachtwoordBlok').classList.toggle('hidden', st.wachtwoordViaEnv);
+  }
+
+  $('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+      toon(await api('login', { wachtwoord: $('wachtwoord').value }));
+      $('wachtwoord').value = '';
+      $('loginMelding').textContent = '';
+    } catch (err) {
+      meld('loginMelding', err.message, false);
+    }
+  });
+
+  $('uitloggen').addEventListener('click', async () => {
+    toon(await api('uitloggen', {}).catch(() => ({ ingelogd: false })));
+  });
+
+  $('webhookForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const url = $('url').value.trim();
+    if (!url) return meld('webhookMelding', 'Plak eerst een webhook-URL', false);
+    try {
+      const st = await api('webhook', { url });
+      toon(st);
+      $('url').value = '';
+      meld('webhookMelding', st.bewaard ? 'Opgeslagen! Stuur even een testmelding om te checken.' : 'Ingesteld, maar alleen tot de volgende herstart.', st.bewaard);
+    } catch (err) {
+      if (err.message === 'Niet ingelogd') return toon({ ingelogd: false });
+      meld('webhookMelding', err.message, false);
+    }
+  });
+
+  $('test').addEventListener('click', async () => {
+    $('test').disabled = true;
+    try {
+      await api('test', {});
+      meld('webhookMelding', 'Testmelding verstuurd, kijk in Discord 👀', true);
+    } catch (err) {
+      meld('webhookMelding', err.message, false);
+    }
+    $('test').disabled = false;
+  });
+
+  $('wis').addEventListener('click', async () => {
+    if (!confirm('Webhook verwijderen? Je krijgt dan geen meldingen meer.')) return;
+    try {
+      toon(await api('webhook', { url: '' }));
+      meld('webhookMelding', 'Webhook verwijderd', true);
+    } catch (err) {
+      meld('webhookMelding', err.message, false);
+    }
+  });
+
+  $('wachtwoordForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+      await api('wachtwoord', { nieuw: $('nieuw').value });
+      $('nieuw').value = '';
+      meld('wachtwoordMelding', 'Wachtwoord gewijzigd', true);
+    } catch (err) {
+      meld('wachtwoordMelding', err.message, false);
+    }
+  });
+
+  api('status').then(toon).catch(() => toon({ ingelogd: false }));
+</script>
+</body>
+</html>
