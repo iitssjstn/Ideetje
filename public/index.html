@@ -118,6 +118,36 @@
   .verstuur { background: var(--ja); color: #fff; width: 100%; margin-top: 20px; }
   .verstuur:disabled { opacity: .5; cursor: default; }
   .fout { color: #c0392b; margin: 12px 0 0; }
+  .antwoordKnop { background: var(--ja); color: #fff; width: 100%; margin-top: 8px; }
+  .popup {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(74, 44, 58, .45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .popup.hidden { display: none; }
+  .popup .card { animation: verschijn .25s ease-out; }
+  @keyframes verschijn { from { transform: scale(.9); opacity: 0; } }
+  .popup textarea { min-height: 110px; }
+  .popupKnoppen { display: grid; gap: 10px; margin-top: 14px; }
+  .popupKnoppen button, .popupKnoppen a {
+    display: block;
+    width: 100%;
+    text-align: center;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 12px 20px;
+  }
+  .kopieer { background: var(--ja); color: #fff; }
+  .wa { background: #25d366; color: #fff; }
+  .wa:hover { background: #1ebe5b; }
+  .deel { background: var(--nee); color: var(--text); }
+  .sluit { background: none; color: var(--muted); padding: 6px; }
   .hidden { display: none; }
   .heart {
     position: fixed;
@@ -156,6 +186,7 @@
       <textarea id="bericht" maxlength="300" placeholder="Bijv. ik wil wel een toetje 🍰"></textarea>
       <button class="verstuur" id="verstuur">Plan versturen 💌</button>
       <p class="fout hidden" id="fout"></p>
+      <button class="antwoordKnop hidden" id="zelfSturen">💬 Stuur het me zelf</button>
     </div>
   </div>
 
@@ -164,6 +195,21 @@
     <h1>Genoteerd!</h1>
     <p id="samenvatting"></p>
     <p>Ik kijk er nu al naar uit 💕</p>
+    <button class="antwoordKnop" id="openPopup">💬 Stuur me je antwoord</button>
+  </div>
+
+  <div class="popup hidden" id="popup" role="dialog" aria-modal="true" aria-labelledby="popupTitel">
+    <div class="card">
+      <h2 id="popupTitel">Stuur me je antwoord 💌</h2>
+      <p>Pas het bericht gerust aan, en kopieer of verstuur het.</p>
+      <textarea id="appje" maxlength="1000"></textarea>
+      <div class="popupKnoppen">
+        <button class="kopieer" id="kopieer">📋 Kopiëren</button>
+        <a class="wa" id="wa" target="_blank" rel="noopener">💬 Versturen via WhatsApp</a>
+        <button class="deel hidden" id="deel">📤 Andere app…</button>
+        <button class="sluit" id="sluit">Sluiten</button>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -304,6 +350,46 @@
   nee.addEventListener('click', vlucht);
   ja.addEventListener('click', zegJa);
 
+  // Popup waarmee ze haar antwoord kan kopiëren of zelf naar je kan appen
+  const popup = document.getElementById('popup');
+  const appje = document.getElementById('appje');
+  const wa = document.getElementById('wa');
+  const kopieer = document.getElementById('kopieer');
+  const deel = document.getElementById('deel');
+
+  // Zonder nummer opent WhatsApp het scherm waar ze zelf kiest naar wie
+  const werkWhatsappBij = () => { wa.href = 'https://wa.me/?text=' + encodeURIComponent(appje.value); };
+  appje.addEventListener('input', werkWhatsappBij);
+  if (navigator.share) deel.classList.remove('hidden');
+
+  function openPopup(tekst) {
+    if (tekst) appje.value = tekst;
+    werkWhatsappBij();
+    kopieer.textContent = '📋 Kopiëren';
+    popup.classList.remove('hidden');
+  }
+  const sluitPopup = () => popup.classList.add('hidden');
+  document.getElementById('sluit').addEventListener('click', sluitPopup);
+  popup.addEventListener('click', e => { if (e.target === popup) sluitPopup(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') sluitPopup(); });
+  document.getElementById('openPopup').addEventListener('click', () => openPopup());
+  document.getElementById('zelfSturen').addEventListener('click', () => openPopup());
+
+  kopieer.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(appje.value);
+    } catch {
+      // Oudere browsers of http zonder s: selecteer en kopieer op de ouderwetse manier
+      appje.select();
+      document.execCommand('copy');
+    }
+    kopieer.textContent = '✅ Gekopieerd!';
+  });
+
+  deel.addEventListener('click', () => {
+    navigator.share({ text: appje.value }).catch(() => {});
+  });
+
   function melding(data) {
     return fetch('api/melding', {
       method: 'POST',
@@ -366,6 +452,7 @@
     const [, emo, label] = ACTIVITEITEN.find(a => a[0] === gekozen);
     const dag = new Date(datum.value + 'T12:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
     const samenvatting = emo + ' ' + label + ' op ' + dag + ' om ' + tijd;
+    const antwoord = 'Hoi! 💕 Ik zeg JA! Laten we gaan: ' + samenvatting + '.' + (bericht ? '\n\n' + bericht : '');
 
     try {
       await melding({ type: 'plan', activiteit: gekozen, datum: datum.value, tijd, bericht });
@@ -373,11 +460,15 @@
       document.getElementById('klaar').classList.remove('hidden');
       document.getElementById('samenvatting').textContent = samenvatting;
       hartjes();
+      appje.value = antwoord;
+      setTimeout(() => openPopup(antwoord), 1500);
     } catch {
       knop.disabled = false;
       knop.textContent = 'Plan versturen 💌';
-      fout.textContent = 'Oeps, versturen lukte niet. Probeer het nog eens, of stuur me een screenshot: ' + samenvatting;
+      fout.textContent = 'Oeps, versturen lukte niet. Probeer het nog eens, of stuur het me zelf 👇';
       fout.classList.remove('hidden');
+      appje.value = antwoord;
+      document.getElementById('zelfSturen').classList.remove('hidden');
     }
   });
 
