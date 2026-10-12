@@ -59,7 +59,8 @@
     0%, 100% { transform: translateY(0) rotate(-10deg) scale(1); }
     50% { transform: translateY(-14px) rotate(10deg) scale(1.1); }
   }
-  h1 { font-size: 1.6rem; margin: 0 0 8px; }
+  h1 { font-size: 1.6rem; margin: 0 0 8px; transition: opacity .2s; }
+  h1.laden { opacity: 0; }
   p { color: var(--muted); margin: 0 0 24px; min-height: 1.4em; }
   .buttons {
     display: flex;
@@ -213,9 +214,25 @@
   </div>
 
 <script>
-  // Optioneel: zet een naam in de link, bijv. /?naam=Sanne
-  const naam = new URLSearchParams(location.search).get('naam') || '';
-  if (naam) document.getElementById('titel').textContent = naam + ', wil je met me op date?';
+  // De naam stel je in via /admin. Een naam in de link (bijv. /?naam=Sanne) gaat voor.
+  const titel = document.getElementById('titel');
+  let naam = '';
+  function zetNaam(n) {
+    naam = n || '';
+    if (naam) titel.textContent = naam + ', wil je met me op date?';
+    titel.classList.remove('laden');
+  }
+  const naamUitLink = new URLSearchParams(location.search).get('naam');
+  if (naamUitLink) {
+    zetNaam(naamUitLink);
+  } else {
+    titel.classList.add('laden');
+    fetch('api/instellingen')
+      .then(r => r.json())
+      .then(d => zetNaam(d.naam))
+      .catch(() => zetNaam(''));
+    setTimeout(() => titel.classList.remove('laden'), 1500); // nooit eeuwig onzichtbaar
+  }
 
   // Eigen gifjes? Zet ze in de map gifs/ en vul hier de bestandsnamen in, bijv.
   //   nee: ['gifs/verdrietig1.gif', 'gifs/verdrietig2.gif'],  ja: 'gifs/dansen.gif'

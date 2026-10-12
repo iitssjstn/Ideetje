@@ -258,6 +258,7 @@ function status() {
     ingelogd: true,
     webhook: url ? verberg(url) : '',
     bron: config.webhook ? 'paneel' : url ? 'env' : '',
+    naam: config.naam || '',
     schrijfbaar,
     wachtwoordViaEnv: Boolean(process.env.ADMIN_WACHTWOORD),
   };
@@ -294,6 +295,14 @@ async function verwerkAdmin(req, res, actie) {
   if (actie === 'uitloggen') {
     sessies.delete(leesCookie(req, 'admin'));
     return json(res, 200, { ingelogd: false }, { 'Set-Cookie': sessieCookie(req, '', 0) });
+  }
+
+  if (actie === 'naam') {
+    const naam = schoon(data.naam, 50);
+    if (naam) config.naam = naam;
+    else delete config.naam;
+    const bewaard = bewaarConfig();
+    return json(res, 200, { ...status(), bewaard });
   }
 
   if (actie === 'webhook') {
@@ -371,6 +380,10 @@ const server = http.createServer((req, res) => {
   if (pad === '/admin' || pad === '/admin/') {
     if (req.method !== 'GET' && req.method !== 'HEAD') return stuur(res, 405, 'Niet toegestaan');
     return serveerAdmin(req, res);
+  }
+  if (pad === '/api/instellingen' && req.method === 'GET') {
+    // Alleen wat de bezoeker toch al te zien krijgt
+    return json(res, 200, { naam: config.naam || '' });
   }
   if (pad === '/api/melding') {
     if (req.method !== 'POST') return stuur(res, 405, 'Alleen POST');

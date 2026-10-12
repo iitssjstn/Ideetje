@@ -79,6 +79,23 @@
   .hidden { display: none; }
   .kop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   a { color: var(--ja); }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--bg);
+    border-radius: 999px;
+    padding: 4px;
+    margin: 16px 0 4px;
+  }
+  .tab {
+    flex: 1;
+    background: none;
+    color: var(--muted);
+    padding: 8px 10px;
+  }
+  .tab:hover { background: var(--rand); color: var(--text); }
+  .tab.actief { background: var(--ja); color: #fff; }
+  .voorbeeld { font-weight: 600; color: var(--text); }
 </style>
 </head>
 <body>
@@ -99,12 +116,39 @@
       <button class="licht" id="uitloggen">Uitloggen</button>
     </div>
 
-    <h2>Discord-webhook</h2>
-    <div class="status" id="webhookStatus"></div>
     <p class="waarschuwing hidden" id="nietSchrijfbaar">
       Let op: instellingen kunnen niet bewaard worden en verdwijnen bij een herstart.
       Voeg het volume <code>date-vraag-data:/app/data</code> toe aan je docker-compose.
     </p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" data-tab="naamTab" role="tab">👤 Naam</button>
+      <button class="tab" data-tab="discordTab" role="tab">🔔 Discord</button>
+      <button class="tab" data-tab="wachtwoordBlok" role="tab">🔑 Wachtwoord</button>
+    </div>
+
+    <section id="naamTab" class="tabblad">
+    <h2>Haar naam</h2>
+    <p>Komt bovenaan de vraag en in je Discord-meldingen.</p>
+    <div class="status">Ze ziet: <span class="voorbeeld" id="naamVoorbeeld"></span></div>
+    <form id="naamForm">
+      <label for="naam">Naam</label>
+      <input type="text" id="naam" maxlength="50" placeholder="Bijv. Sanne" autocomplete="off">
+      <div class="rij">
+        <button>Opslaan</button>
+        <button type="button" class="licht" id="wisNaam">Verwijderen</button>
+      </div>
+    </form>
+    <p class="melding" id="naamMelding"></p>
+
+    <h2>Link om te sturen</h2>
+    <div class="status" id="link"></div>
+    <div class="rij"><button type="button" class="licht" id="kopieerLink">📋 Link kopiëren</button></div>
+    </section>
+
+    <section id="discordTab" class="tabblad">
+    <h2>Discord-webhook</h2>
+    <div class="status" id="webhookStatus"></div>
     <form id="webhookForm">
       <label for="url">Nieuwe webhook-URL</label>
       <input type="url" id="url" placeholder="https://discord.com/api/webhooks/…" autocomplete="off">
@@ -115,8 +159,9 @@
       </div>
     </form>
     <p class="melding" id="webhookMelding"></p>
+    </section>
 
-    <div id="wachtwoordBlok">
+    <section id="wachtwoordBlok" class="tabblad">
       <h2>Wachtwoord wijzigen</h2>
       <form id="wachtwoordForm">
         <label for="nieuw">Nieuw wachtwoord (minstens 8 tekens)</label>
@@ -124,7 +169,7 @@
         <div class="rij"><button>Wijzigen</button></div>
       </form>
       <p class="melding" id="wachtwoordMelding"></p>
-    </div>
+    </section>
 
     <p style="margin-top:24px"><a href="/">← Naar de website</a></p>
   </div>
@@ -160,7 +205,13 @@
     $('wis').classList.toggle('hidden', st.bron !== 'paneel');
     $('test').disabled = !st.webhook;
     $('nietSchrijfbaar').classList.toggle('hidden', st.schrijfbaar);
-    $('wachtwoordBlok').classList.toggle('hidden', st.wachtwoordViaEnv);
+    $('naamVoorbeeld').textContent = (st.naam ? st.naam + ', wil' : 'Wil') + ' je met me op date?';
+    $('naam').placeholder = st.naam || 'Bijv. Sanne';
+    $('wisNaam').classList.toggle('hidden', !st.naam);
+    $('link').textContent = location.origin + '/';
+    // Wachtwoord via ADMIN_WACHTWOORD? Dan is er niets te wijzigen en verdwijnt die tab
+    document.querySelector('[data-tab=wachtwoordBlok]').classList.toggle('hidden', st.wachtwoordViaEnv);
+    if (st.wachtwoordViaEnv && huidigeTab === 'wachtwoordBlok') kiesTab('naamTab');
   }
 
   $('loginForm').addEventListener('submit', async e => {
@@ -212,6 +263,48 @@
     } catch (err) {
       meld('webhookMelding', err.message, false);
     }
+  });
+
+  // Tabbladen (de laatst gekozen tab wordt onthouden)
+  let huidigeTab = 'naamTab';
+  function kiesTab(id) {
+    huidigeTab = id;
+    for (const t of document.querySelectorAll('.tab')) t.classList.toggle('actief', t.dataset.tab === id);
+    for (const s of document.querySelectorAll('.tabblad')) s.classList.toggle('hidden', s.id !== id);
+    try { localStorage.setItem('adminTab', id); } catch {}
+  }
+  for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => kiesTab(t.dataset.tab));
+  try { if ($(localStorage.getItem('adminTab'))) huidigeTab = localStorage.getItem('adminTab'); } catch {}
+  kiesTab(huidigeTab);
+
+  async function bewaarNaam(naam) {
+    try {
+      const st = await api('naam', { naam });
+      toon(st);
+      $('naam').value = '';
+      meld('naamMelding', naam ? (st.bewaard ? 'Opgeslagen!' : 'Ingesteld, maar alleen tot de volgende herstart.') : 'Naam verwijderd', naam ? st.bewaard : true);
+    } catch (err) {
+      if (err.message === 'Niet ingelogd') return toon({ ingelogd: false });
+      meld('naamMelding', err.message, false);
+    }
+  }
+
+  $('naamForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const naam = $('naam').value.trim();
+    if (!naam) return meld('naamMelding', 'Vul eerst een naam in', false);
+    bewaarNaam(naam);
+  });
+  $('wisNaam').addEventListener('click', () => bewaarNaam(''));
+
+  $('kopieerLink').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(location.origin + '/');
+      $('kopieerLink').textContent = '✅ Gekopieerd!';
+    } catch {
+      $('kopieerLink').textContent = 'Kopiëren lukte niet, selecteer de link hierboven';
+    }
+    setTimeout(() => { $('kopieerLink').textContent = '📋 Link kopiëren'; }, 2000);
   });
 
   $('wachtwoordForm').addEventListener('submit', async e => {
