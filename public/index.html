@@ -61,6 +61,15 @@
   }
   h1 { font-size: 1.6rem; margin: 0 0 8px; transition: opacity .2s; }
   h1.laden { opacity: 0; }
+  .licht { background: var(--nee); color: var(--text); }
+  #introJa { background: var(--ja); color: #fff; }
+  #introJa:hover { background: var(--ja-hover); }
+  .wiebel { animation: wiebel 1.6s ease-in-out infinite; }
+  @keyframes wiebel {
+    0%, 100% { transform: rotate(-8deg); }
+    50% { transform: rotate(8deg) scale(1.05); }
+  }
+  .card.in { animation: verschijn .3s ease-out; }
   p { color: var(--muted); margin: 0 0 24px; min-height: 1.4em; }
   .buttons {
     display: flex;
@@ -162,7 +171,17 @@
 </style>
 </head>
 <body>
-  <div class="card" id="vraag">
+  <div class="card" id="intro">
+    <div class="sticker wiebel" id="introSticker">👀</div>
+    <h1 id="introTitel">Hoi! 👋</h1>
+    <p id="introTekst">Ik heb een hele belangrijke vraag voor je…<br>Weet je zeker dat je hem wilt zien?</p>
+    <div class="buttons">
+      <button id="introJa">Ja, laat zien!</button>
+      <button id="introNee" class="licht">Ehh… 🙈</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="vraag">
     <div class="sticker" id="sticker">🥺</div>
     <h1 id="titel">Wil je met me op date?</h1>
     <p id="tekst">&nbsp;</p>
@@ -217,22 +236,50 @@
   // De naam stel je in via /admin. Een naam in de link (bijv. /?naam=Sanne) gaat voor.
   const titel = document.getElementById('titel');
   let naam = '';
+  const introTitel = document.getElementById('introTitel');
   function zetNaam(n) {
     naam = n || '';
-    if (naam) titel.textContent = naam + ', wil je met me op date?';
-    titel.classList.remove('laden');
+    if (naam) {
+      titel.textContent = naam + ', wil je met me op date?';
+      introTitel.textContent = 'Hoi ' + naam + '! 👋';
+    }
+    introTitel.classList.remove('laden');
   }
   const naamUitLink = new URLSearchParams(location.search).get('naam');
   if (naamUitLink) {
     zetNaam(naamUitLink);
   } else {
-    titel.classList.add('laden');
+    introTitel.classList.add('laden');
     fetch('api/instellingen')
       .then(r => r.json())
       .then(d => zetNaam(d.naam))
       .catch(() => zetNaam(''));
-    setTimeout(() => titel.classList.remove('laden'), 1500); // nooit eeuwig onzichtbaar
+    setTimeout(() => introTitel.classList.remove('laden'), 1500); // nooit eeuwig onzichtbaar
   }
+
+  // Intro: eerst nieuwsgierig maken, dan pas de echte vraag
+  const introNee = document.getElementById('introNee');
+  const introStappen = [
+    ['😏', 'Kom op, je bent toch stiekem nieuwsgierig?', 'Nee, echt niet'],
+    ['🤞', 'Ik beloof dat het een leuke vraag is!', 'Hmm… oké dan'],
+  ];
+  let introStap = 0;
+
+  function toonVraag() {
+    document.getElementById('intro').classList.add('hidden');
+    const vraag = document.getElementById('vraag');
+    vraag.classList.remove('hidden');
+    vraag.classList.add('in');
+  }
+
+  document.getElementById('introJa').addEventListener('click', toonVraag);
+  introNee.addEventListener('click', () => {
+    if (introStap >= introStappen.length) return toonVraag(); // "Hmm… oké dan"
+    const [emo, tekst, knop] = introStappen[introStap++];
+    document.getElementById('introSticker').textContent = emo;
+    document.getElementById('introTekst').textContent = tekst;
+    introNee.textContent = knop;
+  });
 
   // Eigen gifjes? Zet ze in de map gifs/ en vul hier de bestandsnamen in, bijv.
   //   nee: ['gifs/verdrietig1.gif', 'gifs/verdrietig2.gif'],  ja: 'gifs/dansen.gif'
